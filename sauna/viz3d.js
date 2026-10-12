@@ -587,9 +587,13 @@
     V.progPt = Pp; Pp.u = U(Pp);
 
     let r;
-    try { r = await (await fetch('/api/volume')).json(); }
+    // static WASM copy: there is no /api/volume, so say so instead of
+    // reporting a JSON parse error on the 404 page
+    try { const res = await fetch('/api/volume');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      r = await res.json(); }
     catch (e) { document.getElementById('v3dInfo').textContent =
-      'could not load the 3D field: ' + e.message; return; }
+      '3D airflow needs the local Python server'; return; }
     if (r.error) { document.getElementById('v3dInfo').innerHTML =
       '<span class="warn">' + r.error + '</span>'; return; }
 

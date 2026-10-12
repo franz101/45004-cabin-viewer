@@ -25,9 +25,26 @@ function stringifyQuery(query) {
   return out;
 }
 
+// server._f: float(value), falling back to the default when the value is
+// missing, empty or not a number Python's float() accepts.
+function pyFloat(v, def) {
+  if (v === undefined || v === null) return def;
+  const s = String(v).trim();
+  if (/^[+-]?nan$/i.test(s)) return NaN;
+  if (/^[+-]?inf(inity)?$/i.test(s)) return s.startsWith("-") ? -Infinity : Infinity;
+  if (/^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(s)) return Number(s);
+  return def;
+}
+
+async function fetchOk(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`not found: ${path} (HTTP ${res.status})`);
+  return res;
+}
+
 function checkInsulation(query) {
   for (const [key, def] of Object.entries(DEFAULT_INSULATION)) {
-    if (query[key] !== undefined && Number(query[key]) !== def) {
+    if (pyFloat(query[key], def) !== def) {
       throw new Error(
         `${key}=${query[key]} needs the envelope build, which is not in the WASM ` +
           `phase 1 (only ${key}=${def} is available)`,
@@ -47,7 +64,7 @@ function checkInsulation(query) {
 export async function loadSauna({ wasm, fabricRun, fabricSweep, staticModel }) {
   let bytes;
   if (typeof wasm === "string" || wasm instanceof URL) {
-    bytes = await (await fetch(wasm)).arrayBuffer();
+    bytes = await (await fetchOk(wasm)).arrayBuffer();
   } else {
     bytes = wasm;
   }

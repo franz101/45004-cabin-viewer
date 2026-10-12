@@ -562,7 +562,9 @@ function renderRun(r, m){
 // Flow and benchmark need the Python server and report that instead.
 const SERVER_ONLY = "Braucht den lokalen Python-Server (python3 -m sauna.web.server).";
 const SAUNA_READY = (async () => {
-  const j = async p => (await fetch(p)).json();
+  const j = async p => { const res = await fetch(p);
+    if (!res.ok) throw new Error(`not found: ${p} (HTTP ${res.status})`);
+    return res.json(); };
   const { loadSauna } = await import('./sauna.js');
   return loadSauna({ wasm: 'sauna.wasm',
     fabricRun: await j('reference/fabric_run.json'),

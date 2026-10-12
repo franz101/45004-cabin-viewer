@@ -3,7 +3,7 @@
   "power": "4500",
   "tout": "-20",
   "setpoint": "95",
-  "cm": "iso",
+  "cm": "iso_default",
   "preheat": "0.2",
   "ladles": "0"
  },
