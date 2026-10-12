@@ -1,0 +1,429 @@
+{
+ "query": {},
+ "fabric": {
+  "volume": 10.562876637158043,
+  "interior_area": 25.893495633636032,
+  "floor_area": 4.558225,
+  "ceiling_area": 4.922189491473602,
+  "ext_wall_net_area": 13.674077055572274,
+  "partition_net_area": 2.739004086590154,
+  "H_tr_is": 89.33255993604432,
+  "H_tr_ms": 103.69961875,
+  "H_tr_em": 55.816141366427075,
+  "H_tr_w": 1.3499030933393645,
+  "H_tr_adj": 8.549982702382955,
+  "A_tot": 25.893495633636032,
+  "A_m": 11.3955625,
+  "C_air": 12675.45196458965,
+  "C_m_iso": 1880267.8125,
+  "C_m_mat": 767792.4413882463,
+  "elements": [
+   {
+    "key": "wall",
+    "area": 13.674077055572274,
+    "to_adjacent": false,
+    "f_rsi": 0.7481371087928466
+   },
+   {
+    "key": "roof",
+    "area": 4.922189491473602,
+    "to_adjacent": false,
+    "f_rsi": 0.9677797701635372
+   },
+   {
+    "key": "floor",
+    "area": 4.558225,
+    "to_adjacent": false,
+    "f_rsi": 0.6939058171745152
+   },
+   {
+    "key": "window",
+    "area": 0.23758294442772815,
+    "to_adjacent": false,
+    "f_rsi": 0.26136363636363635
+   },
+   {
+    "key": "partition",
+    "area": 2.739004086590154,
+    "to_adjacent": true,
+    "f_rsi": 0.7855329949238579
+   },
+   {
+    "key": "door_t1",
+    "area": 2.28855,
+    "to_adjacent": true,
+    "f_rsi": 0.7710027100271003
+   }
+  ]
+ },
+ "response": {
+  "geometry": {
+   "x0_mm": 2535.0,
+   "x1_mm": 4670.0,
+   "y0_mm": 132.5,
+   "y1_mm": 2267.5,
+   "floor_area": 4.558225,
+   "ceiling_area": 4.922189491473602,
+   "volume": 10.562876637158043,
+   "interior_area": 25.893495633636032,
+   "ceiling_min_mm": 2200.0,
+   "ceiling_max_mm": 2619.221152676783,
+   "ceiling_mean_mm": 2344.990440214647,
+   "flat_box_volume": 10.56136374934741,
+   "walls": [
+    {
+     "key": "partition",
+     "label": "partition X=2535 (T1)",
+     "gross": 5.027554086590154,
+     "opening": 2.28855,
+     "net": 2.739004086590154,
+     "exterior": false,
+     "openings": [
+      "T1 internal door"
+     ]
+    },
+    {
+     "key": "end",
+     "label": "end wall X=4670",
+     "gross": 4.637220000000001,
+     "opening": 0.0,
+     "net": 4.637220000000001,
+     "exterior": true,
+     "openings": []
+    },
+    {
+     "key": "long_y0",
+     "label": "long wall Y=132 (F1)",
+     "gross": 4.637220000000001,
+     "opening": 0.23758294442772815,
+     "net": 4.399637055572273,
+     "exterior": true,
+     "openings": [
+      "F1 round window"
+     ]
+    },
+    {
+     "key": "long_y1",
+     "label": "long wall Y=2268",
+     "gross": 4.637220000000001,
+     "opening": 0.0,
+     "net": 4.637220000000001,
+     "exterior": true,
+     "openings": []
+    }
+   ]
+  },
+  "envelope": {
+   "elements": [
+    {
+     "key": "wall",
+     "label": "exterior walls (3)",
+     "area": 13.674077055572274,
+     "u": 1.9374068554396422,
+     "h": 26.49225062927564,
+     "opaque": true,
+     "to_adjacent": false,
+     "f_rsi": 0.7481371087928466,
+     "layers": [
+      {
+       "name": "softwood board",
+       "t_mm": 45.0,
+       "lam": 0.13,
+       "r": 0.34615384615384615,
+       "tag": "[V]",
+       "source": "fc/params.py wall course 45 x 110"
+      }
+     ]
+    },
+    {
+     "key": "roof",
+     "label": "hipped ceiling/roof",
+     "area": 4.922189491473602,
+     "u": 0.322202298364628,
+     "h": 1.585940767139014,
+     "opaque": true,
+     "to_adjacent": false,
+     "f_rsi": 0.9677797701635372,
+     "layers": [
+      {
+       "name": "roof boarding",
+       "t_mm": 19.0,
+       "lam": 0.13,
+       "r": 0.14615384615384613,
+       "tag": "[V]",
+       "source": "Dachholzer 19 x 121"
+      },
+      {
+       "name": "mineral wool",
+       "t_mm": 100.0,
+       "lam": 0.037,
+       "r": 2.702702702702703,
+       "tag": "[S]",
+       "source": "declared lambda_D"
+      },
+      {
+       "name": "ventilated gap",
+       "t_mm": 20.0,
+       "lam": 1.0,
+       "r": 0.02,
+       "tag": "[A]",
+       "source": "residual 120-100 rafter depth"
+      },
+      {
+       "name": "roof covering",
+       "t_mm": 45.0,
+       "lam": 0.13,
+       "r": 0.34615384615384615,
+       "tag": "[A]",
+       "source": "Wind Brett plate"
+      }
+     ]
+    },
+    {
+     "key": "floor",
+     "label": "floor over ventilated void",
+     "area": 4.558225,
+     "u": 1.8005540166204987,
+     "h": 8.207330332409974,
+     "opaque": true,
+     "to_adjacent": false,
+     "f_rsi": 0.6939058171745152,
+     "layers": [
+      {
+       "name": "deck boards",
+       "t_mm": 28.0,
+       "lam": 0.13,
+       "r": 0.21538461538461537,
+       "tag": "[V]",
+       "source": "Bodenholzer 28 x 121"
+      }
+     ]
+    },
+    {
+     "key": "window",
+     "label": "F1 round window",
+     "area": 0.23758294442772815,
+     "u": 5.681818181818182,
+     "h": 1.3499030933393645,
+     "opaque": false,
+     "to_adjacent": false,
+     "f_rsi": 0.26136363636363635,
+     "layers": []
+    },
+    {
+     "key": "partition",
+     "label": "partition to entry room",
+     "area": 2.739004086590154,
+     "u": 1.649746192893401,
+     "h": 4.518661564171574,
+     "opaque": true,
+     "to_adjacent": true,
+     "f_rsi": 0.7855329949238579,
+     "layers": [
+      {
+       "name": "partition board",
+       "t_mm": 45.0,
+       "lam": 0.13,
+       "r": 0.34615384615384615,
+       "tag": "[V]",
+       "source": "Mitte Brett 45 x 110"
+      }
+     ]
+    },
+    {
+     "key": "door_t1",
+     "label": "T1 internal door (entry room)",
+     "area": 2.28855,
+     "u": 1.7615176151761516,
+     "h": 4.031321138211381,
+     "opaque": false,
+     "to_adjacent": true,
+     "f_rsi": 0.7710027100271003,
+     "layers": []
+    }
+   ],
+   "H_tr_is": 89.33255993604432,
+   "H_tr_ms": 103.69961875,
+   "H_tr_em": 55.816141366427075,
+   "H_tr_w": 1.3499030933393645,
+   "H_tr_adj": 8.549982702382955,
+   "H_tr_op": 36.285521728824634,
+   "A_tot": 25.893495633636032,
+   "A_m": 11.3955625,
+   "C_m_iso": 1880267.8125,
+   "C_air": 12675.45196458965,
+   "warnings": [
+    "roof rafter bridging: ISO 6946 parallel-path with a 7% timber fraction gives U=0.322 vs U=0.298 insulated-only"
+   ]
+  },
+  "model": {
+   "C_air": 12675.45196458965,
+   "C_m_mat": 767792.4413882463,
+   "C_m_iso": 1880267.8125,
+   "C_m": 767792.4413882463,
+   "C_bench": 138593.7744,
+   "C_stone": 12000.0,
+   "C_total": 931061.6677528359,
+   "bench_mass_kg": 86.621109,
+   "bench_area_m2": 11.972432,
+   "stone_area_m2": 0.41666666666666663,
+   "H_bench_air": 143.669184,
+   "H_ve": 10.562876637158043,
+   "m_da_ref": 12.599852847504623,
+   "fabric_notes": [
+    "wall 45 mm board        13.67 m2 x   45 mm ->    492.3 kJ/K",
+    "roof 19 mm boarding      4.92 m2 x   19 mm ->     74.8 kJ/K",
+    "floor 28 mm deck         4.56 m2 x   28 mm ->    102.1 kJ/K",
+    "partition 45 mm          2.74 m2 x   45 mm ->     98.6 kJ/K"
+   ],
+   "bench_notes": [
+    "bench kit volume 0.1732 m3 -> 86.6 kg at 500 kg/m3",
+    "air-wetted bench area 11.97 m2 (both faces of every board counted)"
+   ],
+   "stone_notes": [
+    "15 kg of 80 mm stone = 21 stones, pile surface 0.417 m2 (geometric, no packing factor)"
+   ]
+  },
+  "standards": [
+   {
+    "name": "H_IS",
+    "value": 3.45,
+    "unit": "W/(m2 K)",
+    "tag": "[S]",
+    "source": "ISO 13790:2008 C.2 / ISO 52016-1, surface-to-air coefficient"
+   },
+   {
+    "name": "H_MS",
+    "value": 9.1,
+    "unit": "W/(m2 K)",
+    "tag": "[S]",
+    "source": "ISO 13790:2008 C.2 / ISO 52016-1, mass-to-surface coefficient"
+   },
+   {
+    "name": "C_M_AREA",
+    "value": 165000.0,
+    "unit": "J/(m2 K)",
+    "tag": "[S]",
+    "source": "ISO 13790:2008 C.2, areal heat capacity of the mass node"
+   },
+   {
+    "name": "A_M_FACTOR",
+    "value": 2.5,
+    "unit": "-",
+    "tag": "[S]",
+    "source": "ISO 13790:2008 Table 12, A_m = 2.5 A_floor for light construction"
+   },
+   {
+    "name": "RHO_CP_AIR",
+    "value": 1200.0,
+    "unit": "J/(m3 K)",
+    "tag": "[S]",
+    "source": "ISO 13790:2008 C.2, ventilation conductance basis"
+   },
+   {
+    "name": "R_SI_HORIZ",
+    "value": 0.13,
+    "unit": "m2 K/W",
+    "tag": "[S]",
+    "source": "ISO 6946:2017 Table 7, horizontal heat flow"
+   },
+   {
+    "name": "R_SI_UP",
+    "value": 0.1,
+    "unit": "m2 K/W",
+    "tag": "[S]",
+    "source": "ISO 6946:2017 Table 7, upward heat flow"
+   },
+   {
+    "name": "R_SI_DOWN",
+    "value": 0.17,
+    "unit": "m2 K/W",
+    "tag": "[S]",
+    "source": "ISO 6946:2017 Table 7, downward heat flow"
+   },
+   {
+    "name": "R_SE",
+    "value": 0.04,
+    "unit": "m2 K/W",
+    "tag": "[S]",
+    "source": "ISO 6946:2017 Table 7, external surface resistance"
+   },
+   {
+    "name": "LAMBDA_SOFTWOOD",
+    "value": 0.13,
+    "unit": "W/(m K)",
+    "tag": "[S]",
+    "source": "EN ISO 10456 / EN ISO 12524, softwood cross-grain"
+   },
+   {
+    "name": "LAMBDA_MINERAL_WOOL",
+    "value": 0.037,
+    "unit": "W/(m K)",
+    "tag": "[S]",
+    "source": "EN ISO 10456, mineral wool declared conductivity"
+   },
+   {
+    "name": "C_SOFTWOOD",
+    "value": 1600.0,
+    "unit": "J/(kg K)",
+    "tag": "[S]",
+    "source": "ASHRAE Fundamentals ch. 2, wood specific heat"
+   },
+   {
+    "name": "C_STONE",
+    "value": 800.0,
+    "unit": "J/(kg K)",
+    "tag": "[S]",
+    "source": "ASHRAE Fundamentals ch. 2, granite/peridotite specific heat"
+   },
+   {
+    "name": "C_WATER",
+    "value": 4180.0,
+    "unit": "J/(kg K)",
+    "tag": "[S]",
+    "source": "ASHRAE Fundamentals ch. 1"
+   },
+   {
+    "name": "H_FG_100",
+    "value": 2257000.0,
+    "unit": "J/kg",
+    "tag": "[S]",
+    "source": "ASHRAE Fundamentals ch. 1, latent heat at 100 C (steam tables)"
+   },
+   {
+    "name": "P_ATM",
+    "value": 101325.0,
+    "unit": "Pa",
+    "tag": "[S]",
+    "source": "ASHRAE Fundamentals ch. 1"
+   },
+   {
+    "name": "ACH_TYPICAL",
+    "value": 3.0,
+    "unit": "1/h",
+    "tag": "[A]",
+    "source": "sauna ventilation practice (Harvia/Tylo) for a 45 mm wood cabin"
+   },
+   {
+    "name": "SAFETY_WOOD_LIMIT",
+    "value": 100.0,
+    "unit": "degC",
+    "tag": "[A]",
+    "source": "timber continuous-service design limit; EN 60335-2-53 governs the appliance, this is the structural limit used here"
+   },
+   {
+    "name": "SETPOINT_DEFAULT",
+    "value": 90.0,
+    "unit": "degC",
+    "tag": "[A]",
+    "source": "Nordic sauna practice 80-100 C; 90 C chosen as default"
+   }
+  ],
+  "builder_drift": [],
+  "backends": [
+   "numpy",
+   "mlx",
+   "mps"
+  ]
+ }
+}

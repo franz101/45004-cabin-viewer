@@ -55,7 +55,7 @@
 </div>
 <canvas id="cv" class="house"></canvas>
 <iframe id="sauna" title="Sauna-Simulator" hidden></iframe>
-<div id="sauna-note">Der Simulator braucht den lokalen Server: <code>python3 -m sauna.web.server</code> &middot; <a id="sauna-open" target="_blank" rel="noopener">im neuen Fenster &ouml;ffnen</a></div>
+<div id="sauna-note">Simulator l&auml;uft im Browser (WebAssembly). Luftstr&ouml;mung und Benchmark brauchen den lokalen Server <code>python3 -m sauna.web.server</code> &middot; <a id="sauna-open" target="_blank" rel="noopener">im neuen Fenster &ouml;ffnen</a></div>
 <div id="panel" class="house">
   <h1>Gartenhaus 45004</h1>
   <div class="sub">1:1 Modell &middot; 2,4 &times; 4,8 m &middot; Walmdach</div>
@@ -74,7 +74,7 @@
 const M = JSON.parse(document.getElementById("model").textContent);
 
 /* ---------- tabs: 3D house / sauna simulator (wired before WebGL setup, so a GL failure cannot disable them) ---------- */
-const SAUNA_URL="http://127.0.0.1:8765/";   // local server: python3 -m sauna.web.server
+const SAUNA_URL="sauna/index.html";   // static WebAssembly build, published next to the viewer
 function showTab(t){
   const sauna=t==="sauna", f=document.getElementById("sauna");
   document.body.classList.toggle("tab-sauna",sauna);

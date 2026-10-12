@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>45004 sauna — thermodynamics simulator</title>
+<style>
+  :root{
+    --bg:#12141a; --panel:#1b1e26; --panel2:#232733; --line:#333a4a;
+    --fg:#e8ecf4; --dim:#98a2b8; --accent:#e0a458; --hot:#ff6b4a;
+    --warm:#ffb74d; --cool:#5aa9e6; --cold:#7f8fa6; --green:#5fd39a;
+    --violet:#b78bf5;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:13px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",Segoe UI,sans-serif}
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    padding:14px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+  header h1{font-size:15px;margin:0;font-weight:650;letter-spacing:.2px}
+  header .sub{color:var(--dim);font-size:12px}
+  .badge{font-size:11px;padding:2px 7px;border-radius:20px;border:1px solid var(--line);
+    color:var(--dim)}
+  .badge.on{color:var(--green);border-color:#2c5a44}
+  main{padding:16px 18px 60px;max-width:1560px;margin:0 auto}
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(430px,1fr))}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 14px}
+  .panel h2{font-size:12px;margin:0 0 10px;color:var(--dim);font-weight:600;
+    text-transform:uppercase;letter-spacing:.7px}
+  .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:11px 16px}
+  .ctl label{display:flex;justify-content:space-between;font-size:11.5px;color:var(--dim);
+    margin-bottom:3px;gap:8px}
+  .ctl label b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--accent);height:18px}
+  select{width:100%;background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+    border-radius:6px;padding:4px 6px;font-size:12px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(122px,1fr));gap:9px}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+  .card .k{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+  .card .v{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+  .card .u{font-size:11px;color:var(--dim);font-weight:400;margin-left:2px}
+  canvas{width:100%;display:block}
+  table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+  th,td{text-align:right;padding:4px 6px;border-bottom:1px solid #262b36}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--dim);font-weight:600;font-size:11px}
+  tr.tot td{border-top:1px solid var(--line);font-weight:650}
+  .ok{color:var(--green)} .warn{color:var(--warm)} .bad{color:var(--hot)}
+  button{background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+    border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:550}
+  button:hover{border-color:var(--accent)}
+  button:disabled{opacity:.5;cursor:progress}
+  .row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--dim);margin-top:6px}
+  .legend i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:5px;
+    vertical-align:middle}
+  .note{font-size:11.5px;color:var(--dim);margin-top:8px}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+  .scroll{max-height:340px;overflow:auto}
+  .tagS{color:var(--green)} .tagD{color:var(--cool)} .tagV{color:var(--accent)}
+  .tagA{color:var(--warm)}
+  details summary{cursor:pointer;color:var(--dim);font-size:11.5px}
+</style>
+</head>
+<body>
+<header>
+  <h1>45004 sauna — thermodynamics simulator</h1>
+  <span class="sub">ISO 13790 5R1C · ISO 6946 · ASHRAE psychrometrics · ISO 13788 · EN 60335-2-53</span>
+  <span class="badge" id="bBackends">…</span>
+  <span class="badge" id="bStatus">idle</span>
+</header>
+
+<main>
+  <div class="panel" style="margin-bottom:14px">
+    <h2>Inputs</h2>
+    <div class="controls" id="controls"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="btnRun">Run session</button>
+      <button id="btnSteady">Run to equilibrium</button>
+      <button id="btnSweep">Sweep design space (GPU)</button>
+      <button id="btnBench">Benchmark backends</button>
+      <select id="selBackend" style="width:auto;min-width:120px">
+        <option value="mlx">MLX (Apple GPU)</option>
+        <option value="mps">PyTorch MPS</option>
+        <option value="numpy">CPU (numpy)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:14px">
+    <h2>Headline numbers</h2>
+    <div class="cards" id="cards"></div>
+    <div class="note" id="verdict"></div>
+  </div>
+
+  <div class="grid g2" style="margin-bottom:14px">
+    <div class="panel">
+      <h2>Temperatures</h2>
+      <canvas id="cTemp" height="230"></canvas>
+      <div class="legend" id="lTemp"></div>
+      <div class="note">Air tracks the heater; the fabric mass and the benches lag by
+        hours — that lag is what sets the heat-up time, not the air volume.</div>
+    </div>
+    <div class="panel">
+      <h2>Where every watt goes</h2>
+      <canvas id="cPower" height="230"></canvas>
+      <div class="legend" id="lPower"></div>
+      <div class="note">Positive = into the room (electrical input), negative = leaving it
+        (transmission, ventilation, charging the fabric and benches).</div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="margin-bottom:14px">
+    <div class="panel">
+      <h2>Moisture / löyly</h2>
+      <canvas id="cHum" height="210"></canvas>
+      <div class="legend" id="lHum"></div>
+      <div class="note" id="humNote"></div>
+    </div>
+    <div class="panel">
+      <h2>Energy audit — does the model conserve energy?</h2>
+      <div id="audit"></div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="margin-bottom:14px">
+    <div class="panel">
+      <h2>Envelope — ISO 6946 U-values</h2>
+      <div class="scroll"><table id="tEnv"></table></div>
+      <div class="note" id="envWarn"></div>
+    </div>
+    <div class="panel">
+      <h2>Thermal mass — material take-off</h2>
+      <div id="mass"></div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:14px">
+    <h2>3D flight-through — D3Q19 lattice-Boltzmann, volume-rendered</h2>
+    <div class="row" style="margin-bottom:8px">
+      <button id="b3dBoth">temperature + steam</button>
+      <button id="b3dTemp">temperature</button>
+      <button id="b3dFlow">airflow only</button>
+      <button id="b3dPause">pause</button>
+      <span class="note" id="v3dInfo">loading 3D field…</span>
+    </div>
+    <canvas id="c3d" height="420" style="cursor:grab;border-radius:8px;background:#0e1016"></canvas>
+    <div class="note"><b>Drag</b> to orbit · <b>wheel</b> to zoom · <b>F</b> for fly mode
+      (WASD + mouse look, Q/E down/up, pointer lock) · <b>R</b> reset · <b>space</b> pause.
+      2 600 steam particles are advected through the velocity field; the temperature is a
+      raymarched 3D texture blending between heat-up frames.
+      <b>Ra ~5×10<sup>4</sup></b> here vs the physical <b>~4×10<sup>10</sup></b> —
+      correct regime, not resolved turbulence.</div>
+  </div>
+
+  <div class="grid g2" style="margin-bottom:14px">
+    <div class="panel">
+      <h2>Airflow &amp; heatmap — 2D lattice-Boltzmann section</h2>
+      <div class="row" style="margin-bottom:8px">
+        <button id="btnFlow">Run 2D flow (GPU)</button>
+        <select id="selFlow" style="width:auto;min-width:130px">
+          <option value="both">temperature + airflow</option>
+          <option value="temp">temperature only</option>
+          <option value="flow">airflow only</option>
+        </select>
+        <span class="note" id="flowInfo">not run yet</span>
+      </div>
+      <canvas id="cFlow" height="470"></canvas>
+      <div class="note">Vertical section through the sauna at the F1 wall, driven by
+        the 5R1C surface temperatures and the real heater power. Streamlines are
+        integrated from the velocity field. <b>Ra here is
+        ~2.6×10<sup>5</sup>; the real sauna is ~4×10<sup>10</sup></b> — the field shows
+        the correct regime (plume, stable stratification), not resolved turbulence.</div>
+    </div>
+    <div class="panel">
+      <h2>Vertical stratification — the number that matters in a sauna</h2>
+      <canvas id="cStrat" height="240"></canvas>
+      <div class="note" id="stratNote">Run the flow to see the floor-to-head profile.</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:14px">
+    <h2>Design space — time to 80 °C (rows: heater power, cols: outdoor temperature)</h2>
+    <div class="row" style="margin-bottom:8px">
+      <span class="note" id="sweepInfo">press “Sweep design space” to compute on the GPU</span>
+    </div>
+    <canvas id="cSweep" height="300"></canvas>
+  </div>
+
+  <div class="grid g2" style="margin-bottom:14px">
+    <div class="panel">
+      <h2>GPU backend benchmark</h2>
+      <div class="scroll"><table id="tBench"></table></div>
+      <div class="note">All backends run the <em>same</em> right-hand side through an
+        array-API shim, so agreement is a correctness statement, not a coincidence.</div>
+    </div>
+    <div class="panel">
+      <h2>Geometry &amp; constants (with provenance)</h2>
+      <div class="scroll"><div id="geom"></div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Standards registry — every constant and where it comes from</h2>
+    <div class="scroll"><table id="tStd"></table></div>
+    <div class="note"><span class="tagS">[S]</span> standard value ·
+      <span class="tagD">[D]</span> derived · <span class="tagV">[V]</span> verified in the
+      Montageanleitung · <span class="tagA">[A]</span> assumed (documented, not from a source)</div>
+  </div>
+</main>
+
+<script src="viz3d.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const COL = {air:'#ff6b4a', bench:'#e0a458', stone:'#b78bf5', mass:'#5aa9e6',
+  s:'#5fd39a', loss:'#5aa9e6', vent:'#7f8fa6', charge:'#e0a458', stoneAir:'#ffb74d',
+  w:'#5fd39a', rh:'#5aa9e6', dew:'#b78bf5', liq:'#7f8fa6'};
+
+// ---------------------------------------------------------------- controls
+const CTLS = [
+  {id:'power',   label:'Heater power',      min:2000, max:12000, step:250, val:6000, unit:'W'},
+  {id:'stones',  label:'Stone mass',        min:5,    max:40,    step:1,   val:15,   unit:'kg'},
+  {id:'tout',    label:'Outdoor temp',      min:-30,  max:30,    step:1,   val:-10,  unit:'°C'},
+  {id:'ach',     label:'Air changes',       min:0,    max:10,    step:0.5, val:3,    unit:'1/h'},
+  {id:'setpoint',label:'Setpoint',          min:50,   max:110,   step:1,   val:90,   unit:'°C'},
+  {id:'heatup',  label:'Heat-up phase',     min:0,    max:360,   step:5,   val:60,   unit:'min'},
+  {id:'soak',    label:'Soak phase',        min:0,    max:180,   step:5,   val:20,   unit:'min'},
+  {id:'cool',    label:'Cool-down',         min:0,    max:480,   step:10,  val:120,  unit:'min'},
+  {id:'ladles',  label:'Ladles thrown',     min:0,    max:10,    step:1,   val:3,    unit:''},
+  {id:'ladlekg', label:'Ladle size',        min:0.05, max:0.6,   step:0.05,val:0.2,  unit:'kg'},
+  {id:'interval',label:'Ladle interval',    min:0.5,  max:10,    step:0.5, val:2,    unit:'min'},
+  {id:'wallins', label:'Wall insulation',   min:0,    max:100,   step:5,   val:0,    unit:'mm'},
+  {id:'roofins', label:'Roof insulation',   min:0,    max:250,   step:10,  val:100,  unit:'mm'},
+  {id:'floorins',label:'Floor insulation',  min:0,    max:100,   step:5,   val:0,    unit:'mm'},
+  {id:'benchmass',label:'Bench mass factor',min:0.2,  max:1.5,   step:0.05,val:1.0,  unit:'×'},
+  {id:'preheat', label:'Supply preheat',    min:0,    max:1,     step:0.05,val:0.6,  unit:'×'},
+  {id:'direct',  label:'Heater direct→air', min:0,    max:0.6,   step:0.05,val:0.2,  unit:'×'},
+];
+const SELECTS = [
+  {id:'film', label:'Film coefficients', opts:[
+    ['iso','ISO 13790 (h=3.45/9.1)'],['natural','natural conv. + radiation']]},
+  {id:'cm', label:'Fabric capacitance', opts:[
+    ['take_off','material take-off'],['iso_default','ISO 13790 default']]},
+  {id:'moisture', label:'Moisture / löyly', opts:[['1','enabled'],['0','dry heat only']]},
+  {id:'doorsauna', label:'Exterior door', opts:[
+    ['1','in the sauna wall (as CAD)'],['0','outside the sauna']]},
+];
+function buildControls(){
+  const box = $('#controls');
+  box.innerHTML = '';
+  for(const c of CTLS){
+    const d = document.createElement('div'); d.className='ctl';
+    d.innerHTML = `<label>${c.label}<b><span id="v_${c.id}">${c.val}</span> ${c.unit}</b></label>
+      <input type="range" id="f_${c.id}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.val}">`;
+    box.appendChild(d);
+    d.querySelector('input').addEventListener('input', e=>{
+      $(`#v_${c.id}`).textContent = e.target.value;
+      schedule();
+    });
+  }
+  for(const s of SELECTS){
+    const d = document.createElement('div'); d.className='ctl';
+    d.innerHTML = `<label>${s.label}</label><select id="f_${s.id}">` +
+      s.opts.map(([v,t])=>`<option value="${v}">${t}</option>`).join('') + `</select>`;
+    box.appendChild(d);
+    d.querySelector('select').addEventListener('change', ()=>run());
+  }
+}
+function query(){
+  const q = new URLSearchParams();
+  for(const c of CTLS) q.set(c.id, $(`#f_${c.id}`).value);
+  for(const s of SELECTS) q.set(s.id, $(`#f_${s.id}`).value);
+  return q;
+}
+
+// ---------------------------------------------------------------- charting
+function prep(cv){
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if(cv.width !== w*dpr || cv.height !== h*dpr){ cv.width = w*dpr; cv.height = h*dpr; }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,w,h);
+  return {g,w,h};
+}
+function niceTicks(lo,hi,n=5){
+  if(!(hi>lo)) { hi = lo+1; }
+  const raw=(hi-lo)/n, mag=Math.pow(10,Math.floor(Math.log10(raw))), norm=raw/mag;
+  const step=(norm<=1?1:norm<=2?2:norm<=5?5:10)*mag;
+  const a=Math.ceil(lo/step)*step, out=[];
+  for(let v=a; v<=hi+1e-9; v+=step) out.push(v);
+  return out;
+}
+function lineChart(cv, xs, series, opts={}){
+  const {g,w,h} = prep(cv);
+  const L=48,R=12,T=10,B=24, pw=w-L-R, ph=h-T-B;
+  let lo=Infinity, hi=-Infinity;
+  for(const s of series) for(const v of s.data){ if(v==null||!isFinite(v)) continue;
+    if(v<lo)lo=v; if(v>hi)hi=v; }
+  if(opts.y0!=null) lo=Math.min(lo,opts.y0);
+  if(!isFinite(lo)){ lo=0; hi=1; }
+  if(hi-lo<1e-6) hi=lo+1;
+  const pad=(hi-lo)*0.08; lo-=pad; hi+=pad;
+  if(opts.zero) lo=Math.min(lo,0);
+  const x0=xs[0], x1=xs[xs.length-1]||1;
+  const X=v=>L+(v-x0)/((x1-x0)||1)*pw, Y=v=>T+ph-(v-lo)/((hi-lo)||1)*ph;
+
+  g.strokeStyle='#262b36'; g.fillStyle='#98a2b8'; g.font='10px ui-monospace,monospace';
+  for(const t of niceTicks(lo,hi,5)){
+    const y=Y(t); g.beginPath(); g.moveTo(L,y); g.lineTo(L+pw,y); g.stroke();
+    g.textAlign='right'; g.textBaseline='middle'; g.fillText(t.toFixed(Math.abs(t)>=100?0:1), L-5, y);
+  }
+  g.textAlign='center'; g.textBaseline='top';
+  for(const t of niceTicks(x0,x1,6)){
+    const x=X(t); g.beginPath(); g.moveTo(x,T); g.lineTo(x,T+ph); g.strokeStyle='#20242e'; g.stroke();
+    g.fillStyle='#98a2b8'; g.fillText(t.toFixed(0), x, T+ph+5);
+  }
+  g.strokeStyle='#3a4256'; g.beginPath(); g.moveTo(L,T); g.lineTo(L,T+ph); g.lineTo(L+pw,T+ph); g.stroke();
+  if(opts.yLabel){ g.save(); g.translate(11,T+ph/2); g.rotate(-Math.PI/2);
+    g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#98a2b8';
+    g.font='10px sans-serif'; g.fillText(opts.yLabel,0,0); g.restore(); }
+  if(opts.xLabel){ g.textAlign='right'; g.textBaseline='top'; g.fillStyle='#98a2b8';
+    g.font='10px sans-serif'; g.fillText(opts.xLabel, L+pw, T+ph+4); }
+
+  if(opts.bands) for(const b of opts.bands){
+    g.fillStyle=b.color; g.fillRect(X(b.x0),T,Math.max(X(b.x1)-X(b.x0),1),ph);
+  }
+  for(const s of series){
+    g.strokeStyle=s.color; g.lineWidth=s.width||1.6; g.beginPath();
+    let started=false;
+    for(let i=0;i<xs.length;i++){
+      const v=s.data[i]; if(v==null||!isFinite(v)){ started=false; continue; }
+      const px=X(xs[i]), py=Y(v);
+      if(!started){ g.moveTo(px,py); started=true; } else g.lineTo(px,py);
+    }
+    g.stroke();
+    if(s.fill){
+      g.lineTo(X(xs[xs.length-1]),Y(Math.max(lo,0)));
+      g.lineTo(X(xs[0]),Y(Math.max(lo,0)));
+      g.closePath(); g.globalAlpha=0.13; g.fillStyle=s.color; g.fill(); g.globalAlpha=1;
+    }
+  }
+}
+function legend(el, series){
+  el.innerHTML = series.map(s=>`<span><i style="background:${s.color}"></i>${s.label}</span>`).join('');
+}
+function barChart(cv, items, opts={}){
+  const {g,w,h}=prep(cv);
+  const L=52,R=12,T=10,B=22, pw=w-L-R, ph=h-T-B;
+  const max=Math.max(...items.map(i=>Math.abs(i.value)),1e-9);
+  const n=items.length, bh=ph/n*0.72, gap=ph/n*0.28;
+  g.font='11px sans-serif';
+  for(let i=0;i<n;i++){
+    const it=items[i], y=T+i*(ph/n)+gap/2;
+    const len=Math.abs(it.value)/max*pw;
+    const x = it.value>=0 ? L : L;
+    g.fillStyle=it.color; g.globalAlpha=0.85;
+    g.fillRect(x, y, len, bh); g.globalAlpha=1;
+    g.fillStyle='#98a2b8'; g.textAlign='right'; g.textBaseline='middle';
+    g.fillText(it.label, L-6, y+bh/2);
+    g.fillStyle='#e8ecf4'; g.textAlign='left';
+    g.fillText(it.text, x+len+6, y+bh/2);
+  }
+}
+function heatmap(cv, grid, rows, cols, unit, best){
+  const {g,w,h}=prep(cv);
+  const L=64,B=42,T=10,R=12, pw=w-L-R, ph=h-T-B;
+  const vals=[]; grid.forEach(r=>r.forEach(v=>{ if(v!=null&&isFinite(v)) vals.push(v); }));
+  const lo=Math.min(...vals), hi=Math.max(...vals);
+  const nr=grid.length, nc=grid[0].length;
+  for(let i=0;i<nr;i++) for(let j=0;j<nc;j++){
+    const v=grid[i][j];
+    const x=L+j*pw/nc, y=T+i*ph/nr, cw=pw/nc, ch=ph/nr;
+    if(v==null||!isFinite(v)){ g.fillStyle='#20242e'; g.fillRect(x,y,cw+0.5,ch+0.5); continue; }
+    const t=(v-lo)/((hi-lo)||1);
+    // blue (fast) -> red (slow/never)
+    const r=Math.round(40+215*t), gg=Math.round(190-150*t), b=Math.round(230-190*t);
+    g.fillStyle=`rgb(${r},${gg},${b})`; g.fillRect(x,y,cw+0.5,ch+0.5);
+  }
+  g.fillStyle='#98a2b8'; g.font='10px ui-monospace,monospace';
+  g.textAlign='right'; g.textBaseline='middle';
+  for(let i=0;i<nr;i+=Math.max(1,Math.round(nr/8)))
+    g.fillText(rows[i].toFixed(0), L-5, T+(i+0.5)*ph/nr);
+  g.textAlign='center'; g.textBaseline='top';
+  for(let j=0;j<nc;j+=Math.max(1,Math.round(nc/8)))
+    g.fillText(cols[j].toFixed(0), L+(j+0.5)*pw/nc, T+ph+5);
+  g.textAlign='right'; g.fillText('outdoor °C →', L+pw, T+ph+22);
+  g.save(); g.translate(12,T+ph/2); g.rotate(-Math.PI/2); g.textAlign='center';
+  g.textBaseline='middle'; g.fillText('heater W →',0,0); g.restore();
+  g.textAlign='left'; g.fillStyle='#e8ecf4'; g.font='11px sans-serif';
+  g.fillText(`${unit}   min ${lo.toFixed(0)} → max ${hi.toFixed(0)}`, L, T-2);
+}
+
+// ---------------------------------------------------------------- render
+let last = null;
+function fmt(v, d=1){ if(v==null||!isFinite(v)) return '—'; return v.toFixed(d); }
+function card(k,v,u,cls){
+  return `<div class="card"><div class="k">${k}</div>
+    <div class="v ${cls||''}">${v}<span class="u">${u||''}</span></div></div>`;
+}
+function renderModel(m){
+  $('#bBackends').textContent = 'backends: ' + (m.backends||[]).join(' · ');
+  $('#bBackends').className = 'badge on';
+  const g=m.geometry, e=m.envelope, mo=m.model;
+  $('#geom').innerHTML = `
+    <table>
+      <tr><th>quantity</th><th>value</th></tr>
+      <tr><td>clear footprint</td><td>${(g.x1_mm-g.x0_mm).toFixed(0)} × ${(g.y1_mm-g.y0_mm).toFixed(0)} mm</td></tr>
+      <tr><td>air volume (hip ceiling, integrated)</td><td>${g.volume.toFixed(3)} m³</td></tr>
+      <tr><td>flat-box estimate L·W·H</td><td>${g.flat_box_volume.toFixed(3)} m³</td></tr>
+      <tr><td>ceiling height range</td><td>${g.ceiling_min_mm.toFixed(0)}–${g.ceiling_max_mm.toFixed(0)} mm</td></tr>
+      <tr><td>floor area</td><td>${g.floor_area.toFixed(3)} m²</td></tr>
+      <tr><td>ceiling area</td><td>${g.ceiling_area.toFixed(3)} m²</td></tr>
+      <tr><td>A_tot interior surface</td><td>${e.A_tot.toFixed(2)} m²</td></tr>
+      <tr class="tot"><td>A_m mass-node area</td><td>${e.A_m.toFixed(2)} m²</td></tr>
+    </table>
+    <div style="margin-top:9px"></div>
+    <table>
+      <tr><th>wall</th><th>gross</th><th>open</th><th>net</th><th></th></tr>
+      ${g.walls.map(w=>`<tr><td>${w.label}</td><td>${w.gross.toFixed(2)}</td>
+        <td>${w.opening.toFixed(2)}</td><td>${w.net.toFixed(2)}</td>
+        <td>${w.exterior?'ext':'int'}</td></tr>`).join('')}
+    </table>`;
+  $('#tEnv').innerHTML = `<tr><th>element</th><th>A m²</th><th>U W/m²K</th>
+      <th>U·A W/K</th><th>f_Rsi</th></tr>` +
+    e.elements.map(el=>`<tr><td>${el.label}</td><td>${el.area.toFixed(2)}</td>
+      <td>${el.u.toFixed(3)}</td><td>${el.h.toFixed(2)}</td>
+      <td>${el.f_rsi.toFixed(3)}</td></tr>`).join('') +
+    `<tr class="tot"><td>H_tr_op (opaque)</td><td></td><td></td><td>${e.H_tr_op.toFixed(2)}</td><td></td></tr>
+     <tr><td>H_tr_em mass→outdoor</td><td></td><td></td><td>${e.H_tr_em.toFixed(2)}</td><td></td></tr>
+     <tr><td>H_tr_w openings→outdoor</td><td></td><td></td><td>${e.H_tr_w.toFixed(2)}</td><td></td></tr>
+     <tr><td>H_tr_adj partition→rear</td><td></td><td></td><td>${e.H_tr_adj.toFixed(2)}</td><td></td></tr>
+     <tr><td>H_tr_is surface→air</td><td></td><td></td><td>${e.H_tr_is.toFixed(2)}</td><td></td></tr>
+     <tr><td>H_tr_ms mass→surface</td><td></td><td></td><td>${e.H_tr_ms.toFixed(2)}</td><td></td></tr>`;
+  $('#envWarn').innerHTML = (e.warnings||[]).map(w=>`<div class="warn">⚠ ${w}</div>`).join('')
+    + ((m.builder_drift||[]).length ? `<div class="bad">⚠ builder drift: ${m.builder_drift.join('; ')}</div>` : '');
+  $('#mass').innerHTML = `<table>
+      <tr><th>capacitance</th><th>J/K</th></tr>
+      <tr><td>air (ISO 1200 J/m³K × V)</td><td>${mo.C_air.toFixed(0)}</td></tr>
+      <tr><td>fabric — material take-off</td><td>${mo.C_m_mat.toFixed(0)}</td></tr>
+      <tr><td>fabric — ISO 13790 default</td><td>${mo.C_m_iso.toFixed(0)}</td></tr>
+      <tr><td>benches (${mo.bench_mass_kg.toFixed(0)} kg softwood)</td><td>${mo.C_bench.toFixed(0)}</td></tr>
+      <tr><td>stones</td><td>${mo.C_stone.toFixed(0)}</td></tr>
+      <tr class="tot"><td>total</td><td>${mo.C_total.toFixed(0)}</td></tr>
+    </table>
+    <div class="note">ISO default is ${(mo.C_m_iso/mo.C_m_mat).toFixed(2)}× the material
+      take-off — the tabulated value assumes masonry, and this cabin is 45 mm timber.</div>
+    <div class="note mono">${(mo.fabric_notes||[]).join('<br>')}</div>`;
+  $('#tStd').innerHTML = `<tr><th>constant</th><th>value</th><th>unit</th><th>tag</th><th>source</th></tr>`+
+    m.standards.map(s=>`<tr><td>${s.name}</td><td>${typeof s.value==='number'?s.value:s.value}</td>
+      <td>${s.unit}</td><td class="tag${s.tag[1]}">${s.tag}</td>
+      <td style="text-align:left">${s.source}</td></tr>`).join('');
+}
+
+function renderRun(r, m){
+  const s=r.series, k=r.key, a=r.audit;
+  last = {r,m};
+  const cards = [
+    card('t → 60 °C', fmt(k.t_to_60C_min,0), 'min'),
+    card('t → 80 °C', fmt(k.t_to_80C_min,0), 'min'),
+    card('t → setpoint', fmt(k.t_to_setpoint_min,0), 'min'),
+    card('peak air', fmt(k.T_max_C,1), '°C'),
+    card('bench peak', fmt(k.T_bench_max_C,1), '°C'),
+    card('stones peak', fmt(k.T_stone_max_C,0), '°C'),
+    card('energy', fmt(k.energy_kWh,2), 'kWh'),
+    card('peak humidity', fmt(k.peak_w_g_per_kg,1), 'g/kg'),
+    card('peak dew point', fmt(k.peak_dewpoint_C,1), '°C'),
+    card('condensate', fmt(k.condensate_total_kg,3), 'kg'),
+    card('mean duty (heat-up)', fmt(k.duty_mean_heatup*100,0), '%'),
+    card('final air', fmt(k.T_end_C,1), '°C'),
+  ];
+  $('#cards').innerHTML = cards.join('');
+
+  const sp = r.scenario.heat_up_min, sp2 = sp + r.scenario.soak_min;
+  const band = [
+    {x0:0, x1:sp, color:'rgba(224,164,88,0.07)'},
+    {x0:sp, x1:sp2, color:'rgba(255,107,74,0.07)'},
+    {x0:sp2, x1:1e9, color:'rgba(90,169,230,0.06)'},
+  ];
+  const temps=[
+    {label:'air', data:s.T_air, color:COL.air},
+    {label:'bench', data:s.T_bench, color:COL.bench},
+    {label:'surface node θs', data:s.T_s, color:COL.s},
+    {label:'fabric mass', data:s.T_m, color:COL.mass},
+    {label:'stones', data:s.T_stone, color:COL.stone, width:1.3},
+    {label:'floor surface', data:s.Tsurf_floor, color:'#7f8fa6', width:1.1},
+    {label:'window surface', data:s.Tsurf_window, color:'#5fd39a', width:1.1},
+  ].filter(x=>x.data);
+  lineChart($('#cTemp'), s.t_min, temps, {bands:band, yLabel:'°C', xLabel:'minutes', zero:false});
+  legend($('#lTemp'), temps);
+
+  const pw=[
+    {label:'heater in', data:s.P_el, color:'#5fd39a'},
+    {label:'fabric charging (θs→θm)', data:s.Q_mass, color:COL.mass},
+    {label:'bench charging', data:s.Q_bench_air, color:COL.bench},
+    {label:'stones → air', data:s.Q_stone_air, color:COL.stoneAir},
+    {label:'transmission out', data:s.Q_loss.map(v=>-v), color:'#7f8fa6'},
+    {label:'ventilation out', data:s.Q_vent.map(v=>-v), color:'#4a5568'},
+    {label:'latent (condensing)', data:s.Q_latent, color:'#b78bf5'},
+  ];
+  lineChart($('#cPower'), s.t_min, pw, {bands:band, yLabel:'W', xLabel:'minutes'});
+  legend($('#lPower'), pw);
+
+  const hum=[
+    {label:'humidity ratio', data:s.w_gkg, color:COL.w},
+    {label:'dew point', data:s.T_dew, color:COL.dew},
+    {label:'air temp', data:s.T_air, color:'#ff6b4a', width:1.1},
+    {label:'liquid water on surfaces', data:s.m_liquid.map(v=>v*1000),
+      color:COL.liq, width:1.1},
+  ];
+  lineChart($('#cHum'), s.t_min, hum, {bands:band, yLabel:'g/kg · °C · g', xLabel:'minutes'});
+  legend($('#lHum'), hum);
+  $('#humNote').textContent =
+    `Peak RH ${fmt(Math.max(...s.RH)*100,1)} % at ${fmt(k.T_max_C,0)} °C. ` +
+    `A sauna is a very dry state in relative terms — the humidity ratio and the ` +
+    `condensation on cool surfaces are the quantities that matter, not RH.`;
+
+  const eIn=a.E_elec_J/3.6e6, stored=a.dE_stored_J/3.6e6, out=a.E_out_J/3.6e6;
+  const rows = [
+    ['electrical in', a.E_elec_J, 'in'],
+    ['water carried in by ladles', a.E_water_in_J, 'in'],
+    ['→ stored: air', a.dE_air_J, 'store'],
+    ['→ stored: fabric', a.dE_fabric_J, 'store'],
+    ['→ stored: benches', a.dE_bench_J, 'store'],
+    ['→ stored: stones', a.dE_stone_J, 'store'],
+    ['→ stored: latent in vapour', a.dE_vapour_J, 'store'],
+    ['→ out: mass → outdoor', a.Q_em_mass_to_outdoor_J, 'out'],
+    ['→ out: openings (door+window)', a.Q_w_openings_J, 'out'],
+    ['→ out: rear room', a.Q_adjacent_room_J, 'out'],
+    ['→ out: ventilation sensible', a.Q_vent_sensible_J, 'out'],
+    ['→ out: ventilation latent', a.Q_vent_latent_J, 'out'],
+  ];
+  const rc = Math.abs(a.residual_pct)<1 ? 'ok' : (Math.abs(a.residual_pct)<3?'warn':'bad');
+  $('#audit').innerHTML = `<table>
+      <tr><th>path</th><th>MJ</th><th>kWh</th><th>% of input</th></tr>
+      ${rows.map(([n,v,kind])=>{
+        const pct = a.E_in_J? 100*v/a.E_in_J : 0;
+        return `<tr><td>${n}</td><td>${(v/1e6).toFixed(2)}</td>
+          <td>${(v/3.6e6).toFixed(3)}</td><td>${pct.toFixed(1)}%</td></tr>`;}).join('')}
+      <tr class="tot"><td>closure residual</td>
+        <td>${(a.residual_J/1e6).toFixed(3)}</td>
+        <td>${(a.residual_J/3.6e6).toFixed(4)}</td>
+        <td class="${rc}">${a.residual_pct.toFixed(3)}%</td></tr>
+    </table>
+    <div class="note">The residual is the honest error of the whole model: energy in
+      minus energy stored minus energy out. Everything above is traced, not asserted.
+      ${a.total_evaporated_kg>0?`<br>Ladles: ${a.total_evaporated_kg.toFixed(2)} kg
+      evaporated, ${a.total_runoff_kg.toFixed(2)} kg ran off (stones below 100 °C).`:''}
+    </div>`;
+  const verdict = [];
+  if(k.t_to_setpoint_min==null || !isFinite(k.t_to_setpoint_min))
+    verdict.push(`<span class="bad">Never reaches the ${ $('#f_setpoint').value } °C setpoint</span> — the heater cannot beat the losses.`);
+  else
+    verdict.push(`Reaches setpoint in <b>${fmt(k.t_to_setpoint_min,0)} min</b>.`);
+  const q = (a.Q_em_mass_to_outdoor_J + a.Q_w_openings_J + a.Q_adjacent_room_J)/3.6e6;
+  verdict.push(`Heat lost to transmission over the run: <b>${q.toFixed(2)} kWh</b>.`);
+  $('#verdict').innerHTML = verdict.join(' ');
+}
+
+// Static build: model, run and sweep come from the WebAssembly core (sauna.wasm).
+// Flow and benchmark need the Python server and report that instead.
+const SERVER_ONLY = "Braucht den lokalen Python-Server (python3 -m sauna.web.server).";
+const SAUNA_READY = (async () => {
+  const j = async p => (await fetch(p)).json();
+  const { loadSauna } = await import('./sauna.js');
+  return loadSauna({ wasm: 'sauna.wasm',
+    fabricRun: await j('reference/fabric_run.json'),
+    fabricSweep: await j('reference/fabric_sweep.json'),
+    staticModel: await j('reference/model.json') });
+})();
+async function apiCall(kind, q){
+  const sauna = await SAUNA_READY;
+  const obj = Object.fromEntries(new URLSearchParams(q).entries());
+  if(kind==='model') return sauna.apiModel(obj);
+  if(kind==='run') return sauna.apiRun(obj);
+  if(kind==='sweep') return sauna.apiSweep(obj);
+  throw new Error(SERVER_ONLY);
+}
+let MODEL=null, timer=null;
+function status(t, on){ $('#bStatus').textContent=t; $('#bStatus').className='badge'+(on?' on':''); }
+function schedule(){ clearTimeout(timer); timer=setTimeout(run, 320); }
+
+async function run(steady=false){
+  status('running…');
+  try{
+    if(!MODEL) MODEL = await apiCall('model', query());
+    const q = query(); if(steady){ q.set('steady','1'); q.set('hours','6'); }
+    const r = await apiCall('run', q);
+    renderModel(MODEL); renderRun(r, MODEL);
+    status('ok');
+  }catch(e){ status('error: '+e.message); console.error(e); }
+}
+async function sweep(){
+  const btn=$('#btnSweep'); btn.disabled=true; status('sweeping on GPU…');
+  try{
+    const q = query();
+    q.set('backend', $('#selBackend').value);
+    const r = await apiCall('sweep', q);
+    heatmap($('#cSweep'), r.t_to_80C_min, r.powers, r.temps, 't→80 °C', true);
+    $('#sweepInfo').innerHTML =
+      `${r.members} members × ${(r.secs||r.seconds).toFixed(2)} s on <b>${r.backend}</b>` +
+      ` — ${(r.members/(r.seconds||1)).toFixed(0)} simulations/s. Blank = never reaches 80 °C.`;
+    status('ok');
+  }catch(e){ status('error: '+e.message); }
+  btn.disabled=false;
+}
+// ---------------------------------------------------------------- flow panel
+function inferno(t){
+  t = Math.max(0, Math.min(1, t));
+  const stops = [[0,0,4],[22,11,57],[66,10,104],[106,23,110],
+                 [147,38,103],[188,55,84],[221,81,58],[243,120,25],
+                 [252,165,10],[246,215,70],[252,255,164]];
+  const x = t*(stops.length-1), i = Math.min(Math.floor(x), stops.length-2), f = x-i;
+  const c = stops[i].map((v,k)=>Math.round(v+(stops[i+1][k]-v)*f));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+function drawFlow(d){
+  const cv=$('#cFlow'); const {g,w,h}=prep(cv);
+  const mode=$('#selFlow').value;
+  const pad=54, top=26, right=18, bot=20;
+  const aw=w-pad-right, ah=h-top-bot;
+  const aspect=d.gx/d.gy;
+  let dw=aw, dh=dw/aspect; if(dh>ah){dh=ah; dw=dh*aspect;}
+  const x0=pad, y0=top+(ah-dh), cw=dw/d.gx, ch=dh/d.gy;
+  const X=i=>x0+i*cw, Y=j=>y0+(d.gy-1-j)*ch;
+
+  if(mode!=='flow'){
+    for(let i=0;i<d.gx;i++) for(let j=0;j<d.gy;j++){
+      if(!d.mask[i][j]){ g.fillStyle='#39404e'; }
+      else { g.fillStyle=inferno((d.T[i][j]-d.T_min)/((d.T_max-d.T_min)||1)); }
+      g.fillRect(X(i), Y(j), cw+1, ch+1);
+    }
+  } else { g.fillStyle='#161a22'; g.fillRect(x0,y0,dw,dh); }
+
+  if(mode!=='temp'){
+    g.strokeStyle='rgba(255,255,255,0.75)'; g.lineWidth=0.8;
+    for(const line of (d.streamlines||[])){
+      g.beginPath();
+      line.forEach(([px,py],k)=>{ const cx=x0+px*dw, cy=y0+(1-py)*dh;
+        k? g.lineTo(cx,cy) : g.moveTo(cx,cy); });
+      g.stroke();
+    }
+  }
+  // geometry outlines
+  g.lineWidth=1.2;
+  const box=(r,color,label)=>{ if(!r) return;
+    g.strokeStyle=color; g.strokeRect(x0+r[0]*dw, y0+(1-r[3])*dh, (r[2]-r[0])*dw, (r[3]-r[1])*dh);
+    if(label){ g.fillStyle=color; g.font='9px sans-serif'; g.textAlign='left';
+      g.fillText(label, x0+r[0]*dw+3, y0+(1-r[3])*dh+10); } };
+  box(d.geometry.heater,'#ff6b4a','heater');
+  box(d.geometry.upper_bench,'#e0a458','upper bench');
+  box(d.geometry.lower_bench,'#e0a458','lower bench');
+  box(d.geometry.backrest,'#c39b6a',null);
+  box(d.geometry.inlet,'#5fd39a','inlet');
+  box(d.geometry.outlet,'#5aa9e6','outlet');
+  // frame + labels
+  g.strokeStyle='#3a4256'; g.strokeRect(x0,y0,dw,dh);
+  g.fillStyle='#98a2b8'; g.font='10px ui-monospace,monospace'; g.textAlign='left';
+  g.fillText(`${d.T_min.toFixed(0)} - ${d.T_max.toFixed(0)} °C air`, x0, top-10);
+  g.save(); g.translate(14, y0+dh/2); g.rotate(-Math.PI/2); g.textAlign='center';
+  g.fillText('height above floor deck',0,0); g.restore();
+  g.textAlign='center'; g.fillText('across the sauna (Y)', x0+dw/2, y0+dh+14);
+}
+function drawStrat(prof){
+  const cv=$('#cStrat'); const {g,w,h}=prep(cv);
+  const L=52,R=16,T=12,B=26, pw=w-L-R, ph=h-T-B;
+  if(!prof||!prof.length){ return; }
+  const lo=Math.min(...prof.map(p=>p.mean_C)), hi=Math.max(...prof.map(p=>p.mean_C));
+  const zmax=Math.max(...prof.map(p=>p.z_mm));
+  const X=v=>L+v*pw, Y=z=>T+ph-(z/zmax)*ph;
+  let lo2=Math.floor(lo-2), hi2=Math.ceil(hi+2);
+  g.strokeStyle='#262b36'; g.fillStyle='#98a2b8'; g.font='10px ui-monospace,monospace';
+  for(let t=lo2;t<=hi2;t+=Math.max(2,Math.round((hi2-lo2)/5))){
+    const y=T+ph-((t-lo2)/((hi2-lo2)||1))*ph;
+    g.beginPath(); g.moveTo(L,y); g.lineTo(L+pw,y); g.stroke();
+    g.textAlign='right'; g.textBaseline='middle'; g.fillText(t+'°',L-5,y);
+  }
+  g.strokeStyle='#3a4256'; g.beginPath(); g.moveTo(L,T); g.lineTo(L,T+ph); g.lineTo(L+pw,T+ph); g.stroke();
+  g.strokeStyle='#ff6b4a'; g.lineWidth=2.2; g.beginPath();
+  prof.forEach((p,k)=>{ const px=L+((p.mean_C-lo2)/((hi2-lo2)||1))*pw, py=Y(p.z_mm);
+    k? g.lineTo(px,py) : g.moveTo(px,py); });
+  g.stroke();
+  prof.forEach(p=>{ const px=L+((p.mean_C-lo2)/((hi2-lo2)||1))*pw, py=Y(p.z_mm);
+    g.fillStyle='#ff6b4a'; g.beginPath(); g.arc(px,py,2.6,0,7); g.fill(); });
+  // feet / head reference lines
+  [[300,'feet'],[1500,'head, sitting']].forEach(([z,lab])=>{
+    if(z>zmax) return; const y=Y(z);
+    g.strokeStyle='#4a5568'; g.setLineDash([3,3]); g.beginPath();
+    g.moveTo(L,y); g.lineTo(L+pw,y); g.stroke(); g.setLineDash([]);
+    g.fillStyle='#7f8fa6'; g.textAlign='left'; g.fillText(lab, L+4, y-4);
+  });
+  g.fillStyle='#98a2b8'; g.textAlign='left'; g.textBaseline='top';
+  g.fillText('°C', L-5, T-10);
+  g.textAlign='right'; g.fillText('floor → ceiling', L+pw, T+ph+6);
+}
+async function flow(){
+  const btn=$('#btnFlow'); btn.disabled=true; status('running 2D flow…');
+  try{
+    const q=query(); q.set('backend',$('#selBackend').value);
+    const d=await apiCall('flow', q);
+    window.__flowLast = d; drawFlow(d); drawStrat(d.stratification);
+    const b=d.bench, r=d.rayleigh||{};
+    $('#flowInfo').innerHTML = `${d.gx}×${d.gy} nodes, ${b.steps} steps in <b>${b.seconds.toFixed(1)} s</b> on ${b.backend} (${b.MLUPS.toFixed(1)} MLUPS)`;
+    const prof=d.stratification||[];
+    if(prof.length>1){
+      const foot=prof[0], head=prof.find(p=>p.z_mm>=900)||prof[prof.length-1];
+      const air=(d.meta&&d.meta.T_air)?` The 5R1C air node is ${d.meta.T_air.toFixed(0)} °C.`:'';
+      $('#stratNote').innerHTML =
+        `Floor <b>${foot.mean_C.toFixed(0)} °C</b> → head height ` +
+        `(${head.z_mm} mm) <b>${head.mean_C.toFixed(0)} °C</b> = a ` +
+        `<b>${(head.mean_C-foot.mean_C).toFixed(0)} K</b> gradient over the ` +
+        `occupied zone.${air}`;
+    } else {
+      $('#stratNote').textContent = 'no stratification data in the payload';
+    }
+    status('ok');
+  }catch(e){ status('error: '+e.message); console.error(e); }
+  btn.disabled=false;
+}
+
+async function bench(){
+  const btn=$('#btnBench'); btn.disabled=true; status('benchmarking…');
+  try{
+    const r = await apiCall('bench', '');
+    $('#tBench').innerHTML = `<tr><th>backend</th><th>seconds</th><th>sims/s</th>
+        <th>max |Δ| vs numpy</th><th>T_end mean °C</th></tr>` +
+      r.rows.map(x=> x.error ? `<tr><td>${x.backend}</td><td colspan="4" class="bad">${x.error}</td></tr>`
+        : `<tr><td>${x.backend}</td><td>${x.seconds.toFixed(2)}</td>
+           <td>${(x.N/x.seconds).toFixed(0)}</td>
+           <td>${(x.max_abs_diff||0).toExponential(2)}</td>
+           <td>${x.T_air_end_mean_C.toFixed(2)}</td></tr>`).join('');
+    status('ok');
+  }catch(e){ status('error: '+e.message); }
+  btn.disabled=false;
+}
+
+buildControls();
+$('#btnRun').onclick = ()=>run(false);
+$('#btnSteady').onclick = ()=>run(true);
+$('#btnSweep').onclick = sweep;
+$('#btnBench').onclick = bench;
+$('#b3dBoth').onclick = ()=>{ if(window.Viz3D) window.Viz3D.V.mode='both'; };
+$('#b3dTemp').onclick = ()=>{ if(window.Viz3D) window.Viz3D.V.mode='temp'; };
+$('#b3dFlow').onclick = ()=>{ if(window.Viz3D) window.Viz3D.V.mode='flow'; };
+$('#b3dPause').onclick = (e)=>{ if(window.Viz3D){ const V=window.Viz3D.V;
+  V.playing=!V.playing; e.target.textContent = V.playing?'pause':'play'; } };
+$('#btnFlow').onclick = flow;
+$('#selFlow').onchange = ()=>{ if(window.__flowLast) drawFlow(window.__flowLast); };
+window.addEventListener('resize', ()=>{ if(last) renderRun(last.r, last.m); });
+run(false);
+</script>
+</body>
+</html>
