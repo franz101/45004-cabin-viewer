@@ -73,6 +73,19 @@
 "use strict";
 const M = JSON.parse(document.getElementById("model").textContent);
 
+/* ---------- tabs: 3D house / sauna simulator (wired before WebGL setup, so a GL failure cannot disable them) ---------- */
+const SAUNA_URL="http://127.0.0.1:8765/";   // local server: python3 -m sauna.web.server
+function showTab(t){
+  const sauna=t==="sauna", f=document.getElementById("sauna");
+  document.body.classList.toggle("tab-sauna",sauna);
+  document.getElementById("tab-house").classList.toggle("on",!sauna);
+  document.getElementById("tab-sauna").classList.toggle("on",sauna);
+  f.hidden=!sauna;
+  if(sauna && !f.src){ f.src=SAUNA_URL; document.getElementById("sauna-open").href=SAUNA_URL; }
+}
+document.getElementById("tab-house").onclick=()=>showTab("house");
+document.getElementById("tab-sauna").onclick=()=>showTab("sauna");
+
 /* ---------- error accounting ---------- */
 // Everything the viewer can silently get wrong is counted here and shown in the
 // footer.  A count of 0 must mean "checked and clean", not "not measured", so
@@ -431,19 +444,6 @@ function showErr(){
 }
 showErr();
 draw();
-
-/* ---------- tabs: 3D house / sauna simulator ---------- */
-const SAUNA_URL="http://127.0.0.1:8765/";   // local server: python3 -m sauna.web.server
-function showTab(t){
-  const sauna=t==="sauna", f=document.getElementById("sauna");
-  document.body.classList.toggle("tab-sauna",sauna);
-  document.getElementById("tab-house").classList.toggle("on",!sauna);
-  document.getElementById("tab-sauna").classList.toggle("on",sauna);
-  f.hidden=!sauna;
-  if(sauna && !f.src){ f.src=SAUNA_URL; document.getElementById("sauna-open").href=SAUNA_URL; }
-}
-document.getElementById("tab-house").onclick=()=>showTab("house");
-document.getElementById("tab-sauna").onclick=()=>showTab("sauna");
 </script>
 </body>
 </html>
